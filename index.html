@@ -1742,7 +1742,7 @@ summary:hover{color:var(--text);}
 </section>
 
 <!-- ============ SOLOS · IDENTIFICAÇÃO DO ENSAIO ============ -->
-<section class="aba" id="aba-identificacao" data-fam="solos" data-modos="simples caracterizacao completo">
+<section class="aba" id="aba-identificacao" data-fam="solos" data-modos="simples caracterizacao completo"><div data-rascslot="identificacao"></div>
   <div id="osCartao"></div>
   <div class="card">
     <h2>Identificação do ensaio <span class="tag">Muda a cada ensaio</span></h2>
@@ -1762,7 +1762,7 @@ summary:hover{color:var(--text);}
 </section>
 
 <!-- ============ ABA 1 · AMOSTRA ============ -->
-<section class="aba" id="aba-amostra" data-fam="solos" data-modos="simples caracterizacao completo">
+<section class="aba" id="aba-amostra" data-fam="solos" data-modos="simples caracterizacao completo"><div data-rascslot="amostra"></div>
 
   <div class="card">
     <h2>Umidade higroscópica <span class="tag">2 cápsulas · DNER-ME 213/94</span></h2>
@@ -1785,7 +1785,7 @@ summary:hover{color:var(--text);}
 </section>
 
 <!-- ============ ABA 2 · PENEIRAS ============ -->
-<section class="aba" id="aba-peneiras" data-fam="solos" data-modos="caracterizacao completo">
+<section class="aba" id="aba-peneiras" data-fam="solos" data-modos="caracterizacao completo"><div data-rascslot="peneiras"></div>
   <div class="card">
     <h2>Massas da amostra — granulometria <span class="tag">DNER-ME 080/94</span></h2>
     <label>Amostra total úmida (g)</label>
@@ -1868,7 +1868,7 @@ summary:hover{color:var(--text);}
 </section>
 
 <!-- ============ ABA 3 · LIMITES ============ -->
-<section class="aba" id="aba-limites" data-fam="solos" data-modos="caracterizacao completo">
+<section class="aba" id="aba-limites" data-fam="solos" data-modos="caracterizacao completo"><div data-rascslot="limites"></div>
   <div class="card">
     <h2>Plasticidade do material <span class="tag" id="npTag">—</span></h2>
     <div class="modos" id="npEscolha"></div>
@@ -1925,7 +1925,7 @@ summary:hover{color:var(--text);}
 
 
 <!-- ============ ABA 4 · COMPACTAÇÃO ============ -->
-<section class="aba" id="aba-compactacao" data-fam="solos" data-modos="simples caracterizacao completo">
+<section class="aba" id="aba-compactacao" data-fam="solos" data-modos="simples caracterizacao completo"><div data-rascslot="compactacao"></div>
   <div class="card">
     <h2>Condições do ensaio <span class="tag" id="compEnergia">—</span></h2>
     <div class="grid2">
@@ -1978,7 +1978,7 @@ summary:hover{color:var(--text);}
 
 
 <!-- ============ ABA 5 · CBR ============ -->
-<section class="aba" id="aba-cbr" data-fam="solos" data-modos="caracterizacao completo">
+<section class="aba" id="aba-cbr" data-fam="solos" data-modos="caracterizacao completo"><div data-rascslot="cbr"></div>
   <div class="card">
     <h2>Moldagem e imersão <span class="tag" id="agSolosTag">—</span></h2>
     <div class="grid4">
@@ -2070,7 +2070,7 @@ summary:hover{color:var(--text);}
 
 
 <!-- ============ ABA 6 · IN SITU ============ -->
-<section class="aba" id="aba-insitu" data-fam="solos" data-modos="simples caracterizacao completo">
+<section class="aba" id="aba-insitu" data-fam="solos" data-modos="simples caracterizacao completo"><div data-rascslot="insitu"></div>
   <div class="card">
     <h2>Método <span class="tag" id="isNormaTag">DNER-ME 092/94</span></h2>
     <div class="grid2">
@@ -9879,11 +9879,13 @@ const _val = v => typeof v === 'function' ? v() : v;
 /** A ficha com títulos e colunas que dependem do ensaio (nomes dos agregados, graduação) já resolvidos. */
 function resolverFicha(f) {
   if (!f) return f;
-  return { ...f, blocos: f.blocos.map(b => ({ ...b, titulo: _val(b.titulo), colunas: _val(b.colunas), idx: _val(b.idx) })) };
+  // `modos`: o bloco só vale nesses tipos de ensaio; `quando`: só quando a função disser (ex.: método do in situ)
+  return { ...f, blocos: f.blocos.filter(b => (!b.modos || b.modos.includes(estado.modo)) && (!b.quando || b.quando()))
+    .map(b => ({ ...b, titulo: _val(b.titulo), colunas: _val(b.colunas), idx: _val(b.idx) })) };
 }
 const fichaDaAba = aba => resolverFicha(todasFichas().find(f => f.aba === aba));
 const cabDaFicha = f => f.cabs || CAB_CS;
-const fichasDoModo = (modo = estado.modo) => todasFichas().filter(f => f.modo === modo).map(f => f.aba);
+const fichasDoModo = (modo = estado.modo) => todasFichas().filter(f => f.modo === modo || (f.modos || []).includes(modo)).map(f => f.aba);
 
 /** Só alguns blocos da ficha — a leitura de um cartão da tela. */
 function recorteFicha(f, idxs) {
@@ -9897,10 +9899,12 @@ function camposDaFicha(f) {
   const saida = [], varias = f.blocos.filter(b => b.tipo === 'grade').length > 1;
   f.blocos.forEach(b => {
     const pre = varias ? b.titulo.split(' —')[0].split(' (')[0] + ' · ' : '';
-    if (b.tipo === 'campos') b.campos.forEach(([rot, c, tipo, , sel]) => saida.push({ caminho: c, rotulo: `${rot}`, tipo, sel, add: b.add }));
+    if (b.tipo === 'campos') b.campos.forEach(([rot, c, tipo, , sel]) => saida.push({ caminho: c, rotulo: `${rot}`, tipo, sel, add: b.add, prep: b.prep }));
     else b.linhas.forEach(([rot, fn, tipo, , fsel]) => b.idx.forEach((ix, k) =>
       saida.push({ caminho: fn(ix), rotulo: `${pre}${rot}${b.colunas.length > 1 ? ' · ' + b.colunas[k] : ''}`,
-                   tipo: b.tipos ? b.tipos[k] : tipo, sel: fsel ? fsel(ix) : undefined, add: b.add })));
+                   tipo: b.tipos ? b.tipos[k] : tipo, sel: fsel ? fsel(ix) : undefined, add: b.add,
+                   // `prep`: o que a tela precisa antes de achar o campo (ex.: o ISC mostra um CP por vez)
+                   prep: b.prep ? () => b.prep(ix) : undefined })));
   });
   return saida;
 }
@@ -10144,6 +10148,7 @@ const semAcentoRasc = t => String(t).normalize('NFD').replace(/[\u0300-\u036f]/g
 let LIDOS_TELA = new Set();   // seletores preenchidos pela IA, ainda não mexidos
 
 function acharCampoRasc(l) {
+  if (l.prep) l.prep();
   let el = document.querySelector(l.sel);
   // linha que ainda não existe (mais caminhões, furos ou CPs que o padrão): acrescenta
   for (let n = 0; !el && l.add && n < 40; n++) {
@@ -10157,6 +10162,7 @@ function acharCampoRasc(l) {
 
 function lerCampo(l) {
   if (!l.sel) return lerCampoCs(l.caminho);
+  if (l.prep) l.prep();
   const el = document.querySelector(l.sel);
   if (!el) return null;
   if (el.tagName === 'SELECT') return el.selectedIndex >= 0 ? el.options[el.selectedIndex].textContent.trim() : null;
@@ -10435,7 +10441,98 @@ const fracoesForma = () => {
   return ((typeof INSUMOS !== 'undefined' && INSUMOS.GRADUACOES_FORMA[g]) || []).map(x => x.fracao + ' mm');
 };
 
+
+/* ---------------- Ensaio solos (OS, Proctor, ISC, granulometria, limites, in situ) ----------------
+   Uma ficha por aba, na ordem das abas. Os campos são os da tela: o valor lido entra no
+   campo e o ensaio recalcula como se tivesse sido digitado. */
+const CAB_SOLOS = cabFamilia('data-md');
+const PEN_SOLOS = ['3"', '2"', '1.1/2"', '1"', '3/4"', '1/2"', '3/8"', '1/4"', 'Nº 4', 'Nº 8', 'Nº 10', 'Nº 16', 'Nº 20', 'Nº 30', 'Nº 40', 'Nº 50', 'Nº 80', 'Nº 100', 'Nº 200'];
+const AB_SOLOS = ['76.2', '50.8', '38.1', '25.4', '19.1', '12.7', '9.52', '6.38', '4.76', '2.38', '2', '1.19', '0.84', '0.59', '0.42', '0.3', '0.18', '0.15', '0.074'];
+const PEN_ISC = ['0,025"', '0,05"', '0,075"', '0,1"', '0,15"', '0,2"', '0,3"', '0,4"', '0,5"'];
+/* o ISC mostra um corpo de prova por vez: escolhe o CP antes de achar o campo */
+const escolherCpIsc = i => {
+  if (typeof cpAtivo === 'undefined' || cpAtivo === i) return;
+  lerCbr();            // guarda o que já está na tela no CP de agora antes de trocar
+  cpAtivo = i; montarCbr();
+};
+const _cravacao = () => typeof metodoInsitu === 'function' && metodoInsitu() === 'cravacao';
+const _os = (rot, k, tipo = 'texto', larg) => fAt(rot, 'os.' + k, _q('data-os', k), tipo, larg);
+const _md = (rot, k, tipo = 'texto', larg) => fAt(rot, k, _q('data-md', k), tipo, larg);
+
+const FICHAS_SOLOS = [
+  { aba: 'identificacao', modo: 'caracterizacao', codigo: PF + '-E1', titulo: 'Ensaio solos — ordem de serviço', primeira: true, cabs: CAB_SOLOS,
+    blocos: [
+      { tipo: 'campos', titulo: 'Ordem de serviço', campos: [
+        _os('Interessado', 'interessado', 'texto', 2), _os('Data da coleta', 'dataColeta', 'data'),
+        _os('Posição (LD, LE, EIXO)', 'posicao'), _os('Encarregado do laboratório', 'encarregado'), _os('Operador', 'operador'),
+        _md('Próctor (N / I / M)', 'proctor')] },
+      { tipo: 'campos', titulo: 'Obra', campos: [
+        _md('Obra', 'obra', 'texto', 2), _md('Rodovia', 'rodovia'), _md('Trecho', 'trecho', 'texto', 2), _md('Camada / estudo', 'camada')] },
+      { tipo: 'campos', titulo: 'Amostra', campos: [
+        _md('Estaca de coleta', 'furo'), _md('Estaca inicial', 'estacaInicial'), _md('Estaca final', 'estacaFinal'),
+        _md('Tipo de material', 'tipoMaterial', 'texto', 2), _md('Origem do material', 'origemMaterial'),
+        _os('Observações', 'observacoes', 'texto', 3)] },
+    ] },
+  { aba: 'compactacao', modo: 'caracterizacao', codigo: PF + '-E2', titulo: 'Ensaio solos — compactação (Proctor)', cabs: CAB_SOLOS,
+    blocos: [
+      { tipo: 'campos', titulo: 'Ensaio', campos: [fId('Massa da amostra (g)', 'massa', 'inMassaAm'), fId('Nº de golpes por camada', 'golpes', 'inGolpes')] },
+      { tipo: 'grade', titulo: 'Pontos de compactação', colunas: ['Ponto 1', 'Ponto 2', 'Ponto 3', 'Ponto 4', 'Ponto 5'], idx: [0, 1, 2, 3, 4], linhas: [
+        lin('Molde nº', 'comp.cilindro', i => `[data-comp="${i}"][data-f="cilindro"]`, 'texto'),
+        lin('Água adicionada (g)', 'comp.agua', i => `[data-comp="${i}"][data-f="aguaAdicionada"]`),
+        lin('Molde + solo úmido (g)', 'comp.cilSolo', i => `[data-comp="${i}"][data-f="cilindroMaisSoloUmido"]`)] },
+    ] },
+  { aba: 'cbr', modo: 'caracterizacao', codigo: PF + '-E3', titulo: 'Ensaio solos — ISC (CBR) e expansão', cabs: CAB_SOLOS,
+    blocos: [
+      { tipo: 'campos', titulo: 'Moldagem e prensa', campos: [fId('Data da moldagem', 'dataMoldagem', 'inDataMoldagem', 'data'),
+        fId('Constante da prensa (k)', 'anel', 'inAnel')] },
+      { tipo: 'grade', titulo: 'Corpos de prova — expansão (mm) e leituras do extensômetro', colunas: ['CP 1', 'CP 2', 'CP 3'], idx: [0, 1, 2], prep: escolherCpIsc,
+        linhas: [lin('Expansão — leitura 0 h', 'isc.exp0', () => '#inExp0'), lin('Expansão — leitura 96 h', 'isc.exp96', () => '#inExp96'),
+          ...PEN_ISC.map((p, k) => lin(`Penetração ${p}`, `isc.pen${k}`, () => `[data-cbr="${k}"]`))] },
+    ] },
+  { aba: 'amostra', modo: 'caracterizacao', codigo: PF + '-E4', titulo: 'Ensaio solos — umidade higroscópica', cabs: CAB_SOLOS,
+    blocos: [{ tipo: 'grade', titulo: 'Cápsulas', colunas: ['Cápsula 1', 'Cápsula 2'], idx: [0, 1], linhas: [
+      lin('Cápsula nº', 'higro.capsula', i => `[data-cap="${i}"][data-f="capsula"]`, 'texto'),
+      lin('Cápsula + solo úmido (g)', 'higro.umido', i => `[data-cap="${i}"][data-f="capsulaMaisSoloUmido"]`),
+      lin('Cápsula + solo seco (g)', 'higro.seco', i => `[data-cap="${i}"][data-f="capsulaMaisSoloSeco"]`)] }] },
+  { aba: 'peneiras', modo: 'caracterizacao', codigo: PF + '-E5', titulo: 'Ensaio solos — granulometria', cabs: CAB_SOLOS,
+    blocos: [
+      { tipo: 'campos', titulo: 'Massas da amostra', campos: [fId('Amostra total úmida (g)', 'total', 'inTotal'), fId('Amostra parcial úmida < nº 10 (g)', 'parcial', 'inParcial')] },
+      ...[[0, 11], [11, 19]].map(([de, ate]) => ({ tipo: 'grade', par: true, titulo: de ? 'Peneiramento fino — retido (g)' : 'Peneiramento grosso — retido (g)',
+        colunas: ['Retido (g)'], idx: [0],
+        linhas: PEN_SOLOS.slice(de, ate).map((n, j) => [n, () => `retido.${AB_SOLOS[de + j]}`, 'num', 'g', () => `#tbPen input[data-ab="${AB_SOLOS[de + j]}"]`]) })),
+    ] },
+  { aba: 'limites', modo: 'caracterizacao', codigo: PF + '-E6', titulo: 'Ensaio solos — limites de liquidez e plasticidade', cabs: CAB_SOLOS,
+    blocos: [
+      { tipo: 'grade', titulo: 'Limite de liquidez', colunas: ['1', '2', '3', '4', '5'], idx: [0, 1, 2, 3, 4], linhas: [
+        lin('Cápsula nº', 'll.capsula', i => `[data-ll="${i}"][data-f="capsula"]`, 'texto'),
+        lin('Cápsula + solo úmido (g)', 'll.umido', i => `[data-ll="${i}"][data-f="capsulaMaisSoloUmido"]`),
+        lin('Cápsula + solo seco (g)', 'll.seco', i => `[data-ll="${i}"][data-f="capsulaMaisSoloSeco"]`),
+        lin('Nº de golpes', 'll.golpes', i => `[data-ll="${i}"][data-f="golpes"]`)] },
+      { tipo: 'grade', titulo: 'Limite de plasticidade', colunas: ['1', '2', '3', '4', '5'], idx: [0, 1, 2, 3, 4], linhas: [
+        lin('Cápsula nº', 'lp.capsula', i => `[data-lp="${i}"][data-f="capsula"]`, 'texto'),
+        lin('Cápsula + solo úmido (g)', 'lp.umido', i => `[data-lp="${i}"][data-f="capsulaMaisSoloUmido"]`),
+        lin('Cápsula + solo seco (g)', 'lp.seco', i => `[data-lp="${i}"][data-f="capsulaMaisSoloSeco"]`)] },
+    ] },
+  { aba: 'insitu', modo: 'caracterizacao', codigo: PF + '-E7', titulo: 'Ensaio solos — massa específica in situ', cabs: CAB_SOLOS,
+    blocos: [
+      /* cilindro de cravação (NBR 9813:2016) */
+      { tipo: 'grade', quando: _cravacao, titulo: 'Cilindro de cravação — furos', colunas: _idx(6).map(i => `Furo ${i + 1}`), idx: _idx(6), add: '#btnAddFuro',
+        linhas: [['Local / rua', 'estaca', 'texto'], ['Nº predial', 'numero', 'texto'], ['Posição', 'posicao', 'texto'], ['Camada', 'camada', 'texto'],
+          ['Espessura (cm)', 'espessura', 'num'], ['Cota (cm)', 'cota', 'num'], ['Data', 'data', 'data'], ['Equipamento', 'equipamento', 'texto'],
+          ['Ø do cilindro (cm)', 'diametro', 'num'], ['Altura do cilindro (cm)', 'altura', 'num'], ['Solo + cilindro (g)', 'pesoSoloCil', 'num'],
+          ['Cilindro (g)', 'pesoCil', 'num'], ['Umidade de campo (%)', 'umidadeCampo', 'num']]
+          .map(([r, f, t]) => lin(r, `insitu.${f}`, i => `[data-is="${i}"][data-f="${f}"]`, t)) },
+      /* frasco de areia */
+      { tipo: 'campos', quando: () => !_cravacao(), titulo: 'Lote', campos: [fId('Frasco de areia nº', 'frasco', 'inFrasco', 'texto')] },
+      { tipo: 'grade', quando: () => !_cravacao(), titulo: 'Frasco de areia — furos', colunas: _idx(6).map(i => `Furo ${i + 1}`), idx: _idx(6), add: '#btnAddFuro', linhas: [
+        ['Estaca', 'estaca', 'texto'], ['Posição', 'posicao', 'texto'], ['Frasco antes (g)', 'pesoFrascoAntes', 'num'], ['Frasco depois (g)', 'pesoFrascoDepois', 'num'],
+        ['Solo úmido + tara (g)', 'pesoSoloUmidoMaisTara', 'num'], ['Tara (g)', 'tara', 'num'], ['Umidade de campo (%)', 'umidadeCampo', 'num']]
+        .map(([r, f, t]) => lin(r, `insitu.${f}`, i => `[data-is="${i}"][data-f="${f}"]`, t)) },
+    ] },
+];
+
 const FICHAS_OUTRAS = [
+  ...FICHAS_SOLOS,
   /* ---------------- CAUQ — Marshall ---------------- */
   { aba: 'cqbetume', modo: 'marshall', codigo: PF + '-C1', titulo: 'CAUQ — identificação, betume e umidade', primeira: true, cabs: CAB_CAUQ,
     blocos: [
